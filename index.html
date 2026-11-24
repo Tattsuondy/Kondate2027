@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>わが家の献立</title>
+<meta name="theme-color" content="#ffcf3f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 台所の冷蔵庫に貼る献立表。やさしく、すぐ使える。
+   IDEA: 冷蔵庫のマグネット献立ボードと、スーパーに持っていく買い物メモ。
+   PICTURE: 1週間の献立ボードそのもの（今日の日が目立つ）。
+   COLOUR and TYPE: 卵黄の黄色の帯＋トマトの赤を差し色、料理区分ごとの色。Zen Maru Gothic。
+   LAYOUT: 上に今日、下に週ボード。スマホは1列、広い画面は複数列。下に3つのタブ。 */
+:root{color-scheme:light dark;
+--bg:light-dark(#f7f4ee,#12100c);--card:light-dark(#fff,#1d1a15);--ink:light-dark(#1e1b16,#f3eee4);
+--mut:light-dark(#6b645a,#a79f92);--line:light-dark(#e6dfd2,#2e2a22);--sun:light-dark(#ffcf3f,#3a2f0e);
+--sunink:light-dark(#2a2206,#ffe7a3);--acc:light-dark(#d23f29,#ff7a5c);--chip:light-dark(#f1ece2,#2a261f);
+--c-main:light-dark(#d23f29,#ff7a5c);--c-sub:light-dark(#3b8a4b,#7fcf8d);--c-rice:light-dark(#b07d16,#e8bd5c);
+--c-soup:light-dark(#8a5a3c,#d49b78);--c-other:light-dark(#66707c,#a9b2bd)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif;overflow-x:clip;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+header{background:var(--sun);color:var(--sunink);padding:18px max(4vw,16px) 20px}
+.hrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:1240px;margin:auto}
+h1{font-size:28px;line-height:1.1;margin:0;font-weight:700}
+#stat{font-size:13px;opacity:.8}
+.today{max-width:1240px;margin:12px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.today b{font-size:20px}
+.wrap{max-width:1240px;margin:auto;padding:16px max(4vw,16px)}
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.bar h2{font-size:20px;margin:0 auto 0 0}
+.nav{display:flex;align-items:center;gap:6px}
+.btn{min-height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--line);background:var(--card);font-weight:700}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn.ic{width:44px;padding:0;font-size:20px}
+.btn.warn{color:var(--acc)}
+.tpl{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;align-items:center}
+.tpl span{font-size:13px;color:var(--mut);flex:none}
+.tpl .btn{flex:none}
+.confirm{background:var(--card);border:2px solid var(--acc);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.confirm p{margin:0 auto 0 0}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:12px}
+.day{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px 10px;text-align:left;width:100%;display:block;box-shadow:0 1px 0 var(--line)}
+.day.is-today{border:3px solid var(--acc);padding:10px 12px 8px}
+.dh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.wd{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--chip);font-weight:700}
+.wd.sun{background:var(--acc);color:#fff}.wd.sat{background:light-dark(#2f63b8,#6f9eea);color:#fff}
+.dd{font-weight:700}.dt{margin-left:auto;font-size:12px;color:var(--acc);font-weight:700}
+.slot{display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:15px}
+.tag{flex:none;font-size:12px;font-weight:700;width:22px;height:22px;border-radius:6px;display:inline-grid;place-items:center;color:#fff}
+.t-main{background:var(--c-main)}.t-sub{background:var(--c-sub)}.t-rice{background:var(--c-rice)}.t-soup{background:var(--c-soup)}.t-other{background:var(--c-other)}
+.empty{color:var(--mut);font-size:14px;padding:6px 0}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sum{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.sum .big{font-size:36px;font-weight:700;line-height:1}
+.sum small{color:var(--mut)}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 14px;margin-bottom:12px}
+.sec h3{font-size:15px;margin:8px 0 2px;color:var(--mut)}
+.it{display:flex;align-items:center;gap:12px;min-height:52px;border-top:1px solid var(--line);cursor:pointer}
+.sec h3+.it{border-top:0}
+.it input{width:24px;height:24px;accent-color:var(--acc);flex:none}
+.it .nm{font-size:17px;font-weight:700}
+.it .meta{font-size:13px;color:var(--mut)}
+.it .ct{margin-left:auto;font-size:14px;font-weight:700;white-space:nowrap}
+.it.done .nm{text-decoration:line-through;color:var(--mut)}
+.it .st{font-size:11px;border:1px solid var(--line);border-radius:8px;padding:0 6px;color:var(--mut);white-space:nowrap}
+.dl{display:flex;flex-direction:column;gap:8px}
+.dish{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;text-align:left;width:100%;display:flex;gap:10px;align-items:baseline}
+.dish .ing{font-size:13px;color:var(--mut);display:block}
+.cath{display:flex;align-items:center;gap:8px;margin:18px 0 8px;font-size:17px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav.tabs button{flex:1;min-height:60px;border:0;background:none;font-weight:700;color:var(--mut);font-size:15px;border-top:3px solid transparent}
+nav.tabs button[aria-selected=true]{color:var(--acc);border-top-color:var(--acc)}
+.modal{position:fixed;inset:0;background:rgb(0 0 0/.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.modal.open{display:flex}
+.sheet{background:var(--bg);width:min(640px,100%);max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+@media(min-width:700px){.modal{align-items:center}.sheet{border-radius:20px}}
+.sheet h2{font-size:20px;margin:0 0 10px}
+.grp{margin-bottom:14px}
+.grp h4{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{min-height:40px;padding:0 12px;border-radius:20px;border:1px solid var(--line);background:var(--card);font-size:15px}
+.chips button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.chips.off{opacity:.4;pointer-events:none}
+.note{font-size:13px;color:var(--mut)}
+label.f{display:block;font-size:14px;font-weight:700;margin:10px 0 4px}
+input.t,select.t,textarea.t{width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px}
+textarea.t{min-height:90px}
+.unk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:6px 10px;align-items:center;margin-top:8px;font-size:15px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.acts .sp{margin-left:auto}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}
+.toast.show{opacity:1}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow"><h1>わが家の献立</h1><span><span id="stat">読み込み中…</span> <button class="btn sm" id="sync" aria-label="最新にする">↻</button> <button class="btn sm" id="openCfg">設定</button></span></div>
+  <div class="today" id="today"></div>
+</header>
+
+<main>
+  <section class="wrap" id="v-plan">
+    <div class="bar">
+      <h2 id="wlabel"></h2>
+      <div class="nav">
+        <button class="btn ic" id="wprev" aria-label="前の週">‹</button>
+        <button class="btn sm" id="wnow">今週</button>
+        <button class="btn ic" id="wnext" aria-label="次の週">›</button>
+      </div>
+    </div>
+    <div id="initBox"></div>
+    <div class="tpl" id="tpl"></div>
+    <div id="pconfirm"></div>
+    <div class="board" id="board"></div>
+    <div class="acts"><button class="btn sm" id="toShopWeek">この週の買い物リストを見る</button><button class="btn sm warn sp" id="wclear">この週を空にする</button></div>
+  </section>
+
+  <section class="wrap" id="v-shop" hidden>
+    <div class="seg" id="range"></div>
+    <div class="sum"><span class="big" id="left">0</span><span>点 買う物が残っています</span><small id="rlabel"></small></div>
+    <div id="shop"></div>
+    <div class="acts">
+      <button class="btn sm" id="copy">残りをコピー（LINE用）</button>
+      <button class="btn sm warn sp" id="uncheck">チェックを全部外す</button>
+    </div>
+    <textarea class="t" id="copybox" readonly hidden></textarea>
+  </section>
+
+  <section class="wrap" id="v-dish" hidden>
+    <div class="bar"><h2>料理リスト</h2><button class="btn pri" id="addDish">＋ 料理を追加</button></div>
+    <div id="dishes"></div>
+    <div class="sec" style="padding:12px 14px">
+      <label class="f" for="staples">常備品（買い物リストの最後に在庫確認として出ます）</label>
+      <textarea class="t" id="staples"></textarea>
+      <div class="acts"><button class="btn sm" id="saveStaples">常備品を保存</button></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-v="plan" aria-selected="true">献立</button>
+  <button role="tab" data-v="shop" aria-selected="false">買い物</button>
+  <button role="tab" data-v="dish" aria-selected="false">料理リスト</button>
+</nav>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="seed.js"></script>
+<script>
+{
+const CATS=[["main","メイン","主"],["sub","サブ","副"],["rice","ごはん","飯"],["soup","汁物","汁"],["other","その他","他"]];
+const SECS=["肉・魚","野菜","豆腐・卵・乳","乾物・調味料","その他"];
+const WD="日月火水木金土";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+const pad=n=>String(n).padStart(2,"0");
+const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const md=d=>(d.getMonth()+1)+"/"+d.getDate();
+const sunday=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());return addD(x,-x.getDay())};
+const TODAY=new Date();
+let week=sunday(TODAY), range="week", view="plan";
+
+/* ---------- 保存のしくみ ----------
+   変更は「操作」（この日の献立をこれに／この材料にチェック…）として記録し、
+   端末に保存 → 共有設定があればスプレッドシート(GAS)へ送る。
+   操作単位で送るので、2人が同時に別の日やチェックを触っても消し合わない。 */
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const CFGK="kondate_cfg",STK="kondate_state",QK="kondate_queue";
+let CFG=Object.assign({url:"",key:"",device:"",auto:true},LS.get(CFGK,{}));
+const remote=()=>!!(CFG.url&&CFG.key);
+const EMPTY=()=>({dishes:null,templates:{weeks:[]},plan:{days:{}},checks:{lists:{}}});
+const seedState=()=>Object.assign(EMPTY(),clone({dishes:window.SEED.dishes,templates:window.SEED.templates}));
+function norm(s){const e=EMPTY();if(!s)return null;return{dishes:s.dishes||null,templates:s.templates?.weeks?s.templates:e.templates,plan:s.plan?.days?s.plan:e.plan,checks:s.checks?.lists?s.checks:e.checks}}
+let S=norm(LS.get(STK,null))||(remote()?EMPTY():seedState());
+let Q=LS.get(QK,[]), syncing=false, synced=false, sTimer=null;
+
+function applyOp(st,o){
+  const days=st.plan.days,lists=st.checks.lists;
+  switch(o.t){
+    case"day":o.v?days[o.k]=o.v:delete days[o.k];break;
+    case"days":Object.keys(o.m).forEach(k=>{o.m[k]?days[k]=o.m[k]:delete days[k]});break;
+    case"chk":{const l=lists[o.l]||(lists[o.l]={});o.v?l[o.n]=true:delete l[o.n];
+      const ks=Object.keys(lists).sort();while(ks.length>12)delete lists[ks.shift()];break}
+    case"chkclr":delete lists[o.l];break;
+    case"dishes":st.dishes=o.v;break;
+    case"init":if(!st.dishes?.items?.length)st.dishes=o.dishes;if(!st.templates.weeks.length)st.templates=o.templates;break;
+  }
+}
+function act(o){
+  applyOp(S,o);LS.set(STK,S);
+  if(remote()){Q.push(o);LS.set(QK,Q);clearTimeout(sTimer);sTimer=setTimeout(sync,500);stat("送信待ち "+Q.length+"件")}
+  else stat("この端末に保存しました");
+}
+async function sync(){
+  if(!remote()||syncing)return;syncing=true;
+  const ops=Q.slice();stat(ops.length?"送信中…":"更新中…");
+  try{
+    const r=await fetch(CFG.url,{method:"POST",body:JSON.stringify({key:CFG.key,device:CFG.device||"未設定",ops})});
+    const j=await r.json();
+    if(!j.ok)throw new Error({bad_key:"合言葉が違います",not_configured:"GASに合言葉(KEY)が未設定です"}[j.error]||String(j.error));
+    Q=Q.slice(ops.length);LS.set(QK,Q);
+    S=norm(j.state);Q.forEach(o=>applyOp(S,o));LS.set(STK,S);synced=true;
+    const t=new Date();stat("同期済み "+pad(t.getHours())+":"+pad(t.getMinutes()));
+    renderAll();
+  }catch(e){
+    stat((Q.length?"未送信 "+Q.length+"件・":"")+(e.message&&/合言葉|KEY/.test(e.message)?e.message:"接続できません"));
+  }finally{
+    syncing=false;
+    if(synced&&Q.length){clearTimeout(sTimer);sTimer=setTimeout(sync,800)}
+  }
+}
+
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),1800)}
+function stat(m){$("#stat").textContent=m}
+const items=()=>S.dishes?.items||[];
+const dish=id=>items().find(x=>x.id===id);
+const secOf=n=>S.dishes?.ingr?.[n]||"その他";
+const dishesCopy=()=>clone(S.dishes||{items:[],ingr:{},staples:[]});
+
+/* ---------- 献立 ---------- */
+function dayPlan(key){return S.plan.days[key]||{}}
+function slotsHTML(p){
+  const m=dish(p.main);
+  if(m&&m.one) return `<div class="slot"><span class="tag t-main">主</span><span>${esc(m.name)}<span class="note">（これ1品）</span></span></div>`;
+  const rows=CATS.map(([c,,s])=>{const d=dish(p[c]);return d?`<div class="slot"><span class="tag t-${c}">${s}</span><span>${esc(d.name)}</span></div>`:""}).join("");
+  return rows||`<div class="empty">まだ決めていません。タップして選ぶ</div>`;
+}
+function renderPlan(){
+  const end=addD(week,6);
+  $("#wlabel").textContent=md(week)+"（日）〜"+md(end)+"（土）";
+  const tk=ymd(TODAY);
+  $("#board").innerHTML=[...Array(7)].map((_,i)=>{
+    const d=addD(week,i),k=ymd(d);
+    return `<button class="day${k===tk?" is-today":""}" data-day="${k}">
+      <div class="dh"><span class="wd${i===0?" sun":i===6?" sat":""}">${WD[i]}</span><span class="dd">${md(d)}</span>${k===tk?'<span class="dt">今日</span>':""}</div>
+      ${slotsHTML(dayPlan(k))}</button>`}).join("");
+  const w=S.templates.weeks||[];
+  $("#tpl").innerHTML=w.length?`<span>定番を当てはめる：</span>`+w.map((t,i)=>`<button class="btn sm" data-tpl="${i}">${esc(t.name)}</button>`).join(""):"";
+  const p=dayPlan(tk),names=CATS.map(([c])=>dish(p[c])?.name).filter(Boolean);
+  $("#today").innerHTML=`<span>今日 ${md(TODAY)}（${WD[TODAY.getDay()]}）</span><b>${names.length?esc(names.join("・")):"未定"}</b>
+    <button class="btn sm" id="todayEdit">${names.length?"変える":"今日はこれ、を選ぶ"}</button>
+    ${names.length?'<button class="btn sm pri" id="todayShop">今日の買い物</button>':""}`;
+}
+function weekHasAny(){for(let i=0;i<7;i++){const p=dayPlan(ymd(addD(week,i)));if(CATS.some(([c])=>p[c]))return true}return false}
+function askPlan(msg,ok,fn){
+  $("#pconfirm").innerHTML=`<div class="confirm"><p>${esc(msg)}</p><button class="btn sm pri" id="pc-ok">${esc(ok)}</button><button class="btn sm" id="pc-no">やめる</button></div>`;
+  $("#pc-ok").onclick=()=>{$("#pconfirm").innerHTML="";fn()};
+  $("#pc-no").onclick=()=>{$("#pconfirm").innerHTML=""};
+}
+function applyTpl(i){
+  const t=S.templates.weeks[i];if(!t)return;
+  const go=()=>{const m={};t.days.forEach((d,j)=>{const p={};CATS.forEach(([c])=>{if(d[c])p[c]=d[c]});m[ymd(addD(week,j))]=Object.keys(p).length?p:null});
+    act({t:"days",m});renderAll();toast(t.name+"を当てはめました")};
+  weekHasAny()?askPlan(`この週の献立を「${t.name}」で上書きします。よろしいですか？`,"上書きする",go):go();
+}
+
+/* ---------- 献立を選ぶシート ---------- */
+let draft=null,draftKey=null;
+function openDay(k){
+  if(!S.dishes){toast("先に料理リストを用意してください");return}
+  draftKey=k;draft=clone(dayPlan(k));drawDay();openModal();
+}
+function drawDay(){
+  const d=new Date(draftKey+"T00:00:00"),m=dish(draft.main),one=!!(m&&m.one);
+  $("#sheet").innerHTML=`<h2>${md(d)}（${WD[d.getDay()]}）の献立</h2>`+
+    CATS.map(([c,label,s])=>{
+      const list=items().filter(x=>x.cat===c);
+      const off=one&&c!=="main";
+      return `<div class="grp"><h4><span class="tag t-${c}">${s}</span>${label}${off?'<span class="note">メインだけで完結</span>':""}</h4>
+      <div class="chips${off?" off":""}">${list.map(x=>`<button data-c="${c}" data-id="${x.id}" aria-pressed="${draft[c]===x.id}">${esc(x.name)}</button>`).join("")}
+      <button data-c="${c}" data-id="" aria-pressed="${!draft[c]}">なし</button></div></div>`}).join("")+
+    `<div class="acts"><button class="btn pri" id="dSave">決定</button><button class="btn" id="mClose">やめる</button><button class="btn warn sp" id="dClear">この日を空に</button></div>`;
+}
+
+/* ---------- 買い物 ---------- */
+function rangeDates(){
+  const t=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+  if(range==="today")return[t];
+  if(range==="tomorrow")return[addD(t,1)];
+  if(range==="shown")return[...Array(7)].map((_,i)=>addD(week,i));
+  const s=sunday(t),o=range==="next"?7:0;
+  return[...Array(7)].map((_,i)=>addD(s,i+o));
+}
+function buildList(){
+  const ds=rangeDates(),map=new Map();
+  ds.forEach(d=>{
+    const p=dayPlan(ymd(d)),m=dish(p.main);
+    const cs=m&&m.one?["main"]:CATS.map(c=>c[0]);
+    cs.forEach(c=>{const x=dish(p[c]);if(!x)return;
+      x.ing.forEach(n=>{const e=map.get(n)||{n,c:0,days:new Set(),from:new Set()};e.c++;e.days.add(WD[d.getDay()]);e.from.add(x.name);map.set(n,e)})});
+  });
+  return{ds,map,key:ymd(ds[0])+"_"+ymd(ds[ds.length-1])};
+}
+function checks(key){return S.checks.lists[key]||{}}
+function renderShop(){
+  const lab={today:"今日",tomorrow:"明日",week:"今週",next:"来週",shown:"表示中の週"};
+  $("#range").innerHTML=Object.entries(lab).map(([k,v])=>`<button class="btn sm" data-r="${k}" aria-pressed="${range===k}">${v}</button>`).join("");
+  const{ds,map,key}=buildList(),ck=checks(key);
+  $("#rlabel").textContent=ds.length>1?md(ds[0])+"〜"+md(ds[6]):md(ds[0])+"（"+WD[ds[0].getDay()]+"）";
+  const st=S.dishes?.staples||[];
+  let left=0;
+  const row=(e,isSt)=>{const on=!!ck[e.n];if(!on)left++;
+    return `<label class="it${on?" done":""}"><input type="checkbox" data-n="${esc(e.n)}"${on?" checked":""}>
+      <span><span class="nm">${esc(e.n)}</span>${isSt?' <span class="st">常備</span>':""}<span class="meta" style="display:block">${e.from?esc([...e.from].join("・"))+(ds.length>1?"／"+[...e.days].join(""):""):"在庫を確認"}</span></span>
+      ${e.c>1?`<span class="ct">${e.c}回分</span>`:""}</label>`};
+  const groups=SECS.map(s=>{
+    const es=[...map.values()].filter(e=>secOf(e.n)===s).sort((a,b)=>(!!ck[a.n])-(!!ck[b.n])||b.c-a.c);
+    return es.length?`<div class="sec"><h3>${s}</h3>${es.map(e=>row(e,st.includes(e.n))).join("")}</div>`:""}).join("");
+  const rest=st.filter(n=>!map.has(n));
+  const stH=rest.length?`<div class="sec"><h3>常備品（切れていたら買う）</h3>${rest.map(n=>row({n,c:0},false)).join("")}</div>`:"";
+  $("#shop").innerHTML=map.size?groups+stH:`<div class="sec"><p class="empty">この期間の献立がまだありません。「献立」タブで選ぶと、ここに材料が出ます。</p></div>`+stH;
+  $("#left").textContent=left;
+}
+function copyText(){
+  const{ds,map,key}=buildList(),ck=checks(key);
+  const head="買い物 "+(ds.length>1?md(ds[0])+"〜"+md(ds[6]):md(ds[0]));
+  const body=SECS.map(s=>{const es=[...map.values()].filter(e=>secOf(e.n)===s&&!ck[e.n]);
+    return es.length?"【"+s+"】\n"+es.map(e=>"・"+e.n+(e.c>1?" ×"+e.c:"")).join("\n"):""}).filter(Boolean).join("\n");
+  return head+"\n"+(body||"（買う物はありません）");
+}
+
+/* ---------- 料理リスト ---------- */
+function renderDishes(){
+  $("#staples").value=(S.dishes?.staples||[]).join("、");
+  if(!S.dishes){$("#dishes").innerHTML=`<div class="sec"><p class="empty">料理がまだありません。「＋ 料理を追加」から登録できます。</p></div>`;return}
+  $("#dishes").innerHTML=CATS.map(([c,label,s])=>{const l=items().filter(x=>x.cat===c);
+    return `<div class="cath"><span class="tag t-${c}">${s}</span><b>${label}</b><span class="note">${l.length}品</span></div><div class="dl">`+
+      l.map(x=>`<button class="dish" data-edit="${x.id}"><span><b>${esc(x.name)}</b>${x.one?'<span class="note">（これ1品）</span>':""}<span class="ing">${x.ing.length?esc(x.ing.join("・")):"買う材料なし"}</span></span></button>`).join("")+"</div>"}).join("");
+}
+const splitIng=v=>[...new Set(v.split(/[\n、,，・\s]+/).map(s=>s.trim()).filter(Boolean))];
+let edit=null;
+function openDish(id){
+  const x=id?dish(id):{id:"",name:"",cat:"main",ing:[]};
+  edit={...clone(x),sec:{},delAsk:false};
+  $("#sheet").innerHTML=`<h2>${id?"料理を編集":"料理を追加"}</h2>
+    <label class="f" for="fName">料理名</label><input class="t" id="fName" value="${esc(x.name)}" maxlength="40">
+    <label class="f" for="fCat">区分</label><select class="t" id="fCat">${CATS.map(([c,l])=>`<option value="${c}"${x.cat===c?" selected":""}>${l}</option>`).join("")}</select>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:10px;min-height:44px"><input type="checkbox" id="fOne"${x.one?" checked":""} style="width:22px;height:22px">メインだけで1食が完結する（ミートソースなど）</label>
+    <label class="f" for="fIng">材料（改行か「、」で区切る）</label><textarea class="t" id="fIng">${esc(x.ing.join("\n"))}</textarea>
+    <div id="fUnk"></div>
+    <div class="acts"><button class="btn pri" id="fSave">保存</button><button class="btn" id="mClose">やめる</button>${id?'<button class="btn warn sp" id="fDel">削除</button>':""}</div>`;
+  drawUnk();openModal();$("#fName").focus();
+}
+function drawUnk(){
+  const u=splitIng($("#fIng").value).filter(n=>!S.dishes?.ingr?.[n]);
+  $("#fUnk").innerHTML=u.length?`<p class="note">新しい材料です。売り場を選んでください。</p><div class="unk">`+
+    u.map(n=>`<span>${esc(n)}</span><select class="t" data-u="${esc(n)}">${SECS.map(s=>`<option${(edit.sec[n]||"野菜")===s?" selected":""}>${s}</option>`).join("")}</select>`).join("")+"</div>":"";
+}
+function saveDish(){
+  const name=$("#fName").value.trim();if(!name){toast("料理名を入れてください");return}
+  const nd=dishesCopy(),ing=splitIng($("#fIng").value);
+  ing.forEach(n=>{if(!nd.ingr[n])nd.ingr[n]=edit.sec[n]||"野菜"});
+  const cat=$("#fCat").value,one=cat==="main"&&$("#fOne").checked;
+  const rec={id:edit.id||"d"+Date.now().toString(36),name,cat,ing};if(one)rec.one=true;
+  const i=nd.items.findIndex(x=>x.id===rec.id);
+  i>=0?nd.items[i]=rec:nd.items.push(rec);
+  act({t:"dishes",v:nd});closeModal();renderAll();toast("保存しました");
+}
+
+/* ---------- 共通 ---------- */
+function openModal(){$("#modal").classList.add("open")}
+function closeModal(){$("#modal").classList.remove("open");draft=null;edit=null}
+function show(v){view=v;["plan","shop","dish"].forEach(k=>{$("#v-"+k).hidden=k!==v});
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
+  $("#copybox").hidden=true;window.scrollTo(0,0)}
+function renderAll(){renderPlan();renderShop();renderDishes();renderInit()}
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.v)return show(t.dataset.v);
+  if(t.dataset.day)return openDay(t.dataset.day);
+  if(t.dataset.tpl)return applyTpl(+t.dataset.tpl);
+  if(t.dataset.r){range=t.dataset.r;$("#copybox").hidden=true;return renderShop()}
+  if(t.dataset.edit)return openDish(t.dataset.edit);
+  if(t.dataset.c!==undefined&&draft){draft[t.dataset.c]=t.dataset.id||null;return drawDay()}
+  switch(t.id){
+    case"wprev":week=addD(week,-7);$("#pconfirm").innerHTML="";return renderPlan();
+    case"wnext":week=addD(week,7);$("#pconfirm").innerHTML="";return renderPlan();
+    case"wnow":week=sunday(TODAY);return renderPlan();
+    case"todayEdit":return openDay(ymd(TODAY));
+    case"todayShop":range="today";renderShop();return show("shop");
+    case"toShopWeek":range="shown";renderShop();return show("shop");
+    case"wclear":return askPlan("この週（7日分）の献立を空にします。よろしいですか？","空にする",()=>{const m={};for(let i=0;i<7;i++)m[ymd(addD(week,i))]=null;act({t:"days",m});renderAll()});
+    case"mClose":return closeModal();
+    case"dSave":{const p={};CATS.forEach(([c])=>{if(draft[c])p[c]=draft[c]});
+      if(dish(p.main)?.one)Object.keys(p).forEach(c=>{if(c!=="main")delete p[c]});
+      act({t:"day",k:draftKey,v:Object.keys(p).length?p:null});closeModal();return renderAll()}
+    case"dClear":act({t:"day",k:draftKey,v:null});closeModal();return renderAll();
+    case"fSave":return saveDish();
+    case"fDel":{if(!edit.delAsk){edit.delAsk=true;t.textContent="本当に削除する";return}
+      const nd=dishesCopy();nd.items=nd.items.filter(x=>x.id!==edit.id);act({t:"dishes",v:nd});closeModal();renderAll();return toast("削除しました")}
+    case"addDish":return openDish(null);
+    case"saveStaples":{const nd=dishesCopy();nd.staples=splitIng($("#staples").value);nd.staples.forEach(n=>{if(!nd.ingr[n])nd.ingr[n]="その他"});
+      act({t:"dishes",v:nd});renderAll();return toast("常備品を保存しました")}
+    case"uncheck":{const{key}=buildList();act({t:"chkclr",l:key});return renderShop()}
+    case"sync":return remote()?sync():toast("共有の設定がまだです（設定から）");
+    case"openCfg":return openCfg();
+    case"cfgSave":return saveCfg();
+    case"cfgCopy":{const txt=JSON.stringify(S);navigator.clipboard.writeText(txt).then(()=>toast("データの控えをコピーしました")).catch(()=>toast("コピーできませんでした"));return}
+    case"doInit":act({t:"init",dishes:window.SEED.dishes,templates:window.SEED.templates});renderAll();return toast("初期データを入れました");
+    case"copy":{const txt=copyText(),box=$("#copybox");
+      navigator.clipboard.writeText(txt).then(()=>toast("コピーしました")).catch(()=>{box.value=txt;box.hidden=false;box.select();toast("下の文字を長押しでコピーしてください")});return}
+  }
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.matches("#shop input[type=checkbox]")){
+    const{key}=buildList();act({t:"chk",l:key,n:t.dataset.n,v:t.checked});renderShop();
+  }
+  if(t.dataset.u&&edit)edit.sec[t.dataset.u]=t.value;
+});
+document.addEventListener("input",e=>{if(e.target.id==="fIng")drawUnk()});
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+
+/* ---------- 設定 ---------- */
+function openCfg(){
+  $("#sheet").innerHTML=`<h2>設定</h2>
+    <p class="note">共有の設定が空なら、この端末だけに保存します。ご夫婦で使うときは、2台とも同じ「GASのURL」と「合言葉」を入れてください。</p>
+    <label class="f" for="cUrl">GASのURL（ウェブアプリのURL）</label><input class="t" id="cUrl" value="${esc(CFG.url)}" placeholder="https://script.google.com/macros/s/……/exec" inputmode="url">
+    <label class="f" for="cKey">合言葉（GASのスクリプトプロパティ KEY と同じもの）</label><input class="t" id="cKey" type="password" value="${esc(CFG.key)}" autocomplete="off">
+    <label class="f" for="cDev">この端末の名前（記録に残ります）</label><input class="t" id="cDev" value="${esc(CFG.device)}" placeholder="例：パパのスマホ" maxlength="30">
+    <label style="display:flex;gap:8px;align-items:center;margin-top:10px;min-height:44px"><input type="checkbox" id="cAuto"${CFG.auto?" checked":""} style="width:22px;height:22px">画面を開いている間、30秒ごとに最新にする</label>
+    <p class="note">送る先は、ここに入れたGASのURLだけです。止めるときはURLを消して保存してください。</p>
+    <div class="acts"><button class="btn pri" id="cfgSave">保存</button><button class="btn" id="mClose">やめる</button><button class="btn sm sp" id="cfgCopy">データの控えをコピー</button></div>`;
+  openModal();
+}
+function saveCfg(){
+  const url=$("#cUrl").value.trim();
+  if(url&&!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)){toast("URLの形が違います（…/exec で終わるもの）");return}
+  const was=remote();
+  CFG={url,key:$("#cKey").value,device:$("#cDev").value.trim(),auto:$("#cAuto").checked};LS.set(CFGK,CFG);
+  closeModal();
+  if(remote()){if(!was){Q=[];LS.set(QK,Q);synced=false}sync()}
+  else{if(!S.dishes)S=seedState();LS.set(STK,S);stat("この端末だけに保存");renderAll()}
+}
+function renderInit(){
+  $("#initBox").innerHTML=remote()&&synced&&!items().length?
+    `<div class="confirm"><p>共有先に料理リストがまだありません。お使いのシートから起こした料理34品と定番5週を入れますか？</p><button class="btn sm pri" id="doInit">初期データを入れる</button></div>`:"";
+}
+
+renderAll();
+stat(remote()?"読み込み中…":"この端末だけに保存");
+if(remote())sync();
+setInterval(()=>{if(CFG.auto&&remote()&&document.visibilityState==="visible")sync()},30000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&remote())sync()});
+}
+</script>
+</body>
+</html>
