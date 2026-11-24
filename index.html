@@ -28,13 +28,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Zen Maru Got
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-header{position:relative;background:var(--sun);color:var(--sunink);padding:22px max(4vw,16px) 20px}
-#ver{position:absolute;top:5px;right:max(4vw,16px);font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}
-.hrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:1240px;margin:auto}
-h1{font-size:28px;line-height:1.1;margin:0;font-weight:700}
-#stat{font-size:13px;opacity:.8}
-.today{max-width:1240px;margin:12px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.today b{font-size:20px}
+header{background:var(--sun);color:var(--sunink);padding:6px max(4vw,12px) 8px}
+.hrow{display:flex;align-items:center;gap:8px;max-width:1240px;margin:auto}
+h1{font-size:18px;line-height:1.2;margin:0;font-weight:700;flex:none}
+.hr{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
+#stat{font-size:11px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+header .btn.sm{min-height:34px;padding:0 10px;font-size:13px;flex:none}
+#ver{font-size:11px;opacity:.7;font-variant-numeric:tabular-nums;flex:none}
+.today{max-width:1240px;margin:4px auto 0;display:flex;gap:6px;align-items:center;font-size:12px}
+.today>span{flex:none;opacity:.8}
+.today b{font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wrap{max-width:1240px;margin:auto;padding:16px max(4vw,16px)}
 .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .bar h2{font-size:20px;margin:0 auto 0 0}
@@ -108,8 +111,7 @@ textarea.t{min-height:90px}
 </head>
 <body>
 <header>
-  <span id="ver"></span>
-  <div class="hrow"><h1>わが家の献立</h1><span><span id="stat">読み込み中…</span> <button class="btn sm" id="sync" aria-label="最新にする">↻</button> <button class="btn sm" id="openCfg">設定</button></span></div>
+  <div class="hrow"><h1>わが家の献立</h1><div class="hr"><span id="stat">読み込み中…</span><button class="btn sm" id="sync" aria-label="最新にする">↻</button><button class="btn sm" id="openCfg">設定</button><span id="ver"></span></div></div>
   <div class="today" id="today"></div>
 </header>
 
@@ -166,7 +168,7 @@ textarea.t{min-height:90px}
 <script>
 {
 /* アプリのバージョン：ファイルを更新したら、ここを上げる */
-const VERSION="1.1.1";
+const VERSION="1.1.2";
 
 const CATS=[["main","メイン","主"],["sub","サブ","副"],["rice","ごはん","飯"],["soup","汁物","汁"],["other","その他","他"]];
 const SECS=["肉・魚","野菜","豆腐・卵・乳","乾物・調味料","その他"];
@@ -263,8 +265,8 @@ function renderPlan(){
   $("#tpl").innerHTML=w.length?`<span>定番を当てはめる：</span>`+w.map((t,i)=>`<button class="btn sm" data-tpl="${i}">${esc(t.name)}</button>`).join(""):"";
   const p=dayPlan(tk),names=CATS.map(([c])=>dish(p[c])?.name).filter(Boolean);
   $("#today").innerHTML=`<span>今日 ${md(TODAY)}（${WD[TODAY.getDay()]}）</span><b>${names.length?esc(names.join("・")):"未定"}</b>
-    <button class="btn sm" id="todayEdit">${names.length?"変える":"今日はこれ、を選ぶ"}</button>
-    ${names.length?'<button class="btn sm pri" id="todayShop">今日の買い物</button>':""}`;
+    <button class="btn sm" id="todayEdit">${names.length?"変える":"選ぶ"}</button>
+    ${names.length?'<button class="btn sm pri" id="todayShop">買い物</button>':""}`;
 }
 function weekHasAny(){for(let i=0;i<7;i++){const p=dayPlan(ymd(addD(week,i)));if(CATS.some(([c])=>p[c]))return true}return false}
 function askPlan(msg,ok,fn){
