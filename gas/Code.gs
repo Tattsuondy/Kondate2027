@@ -13,6 +13,11 @@
  *   - 全部止める   … Apps Script の「デプロイを管理」でこのデプロイをアーカイブする
  *
  * 最初の1台の登録：エディタで関数 createInvite を選んで実行 → スプレッドシートにQRが出る → スマホで読む
+ *
+ * 料理リストは「料理」「材料」シートで直接編集できます（アプリからの編集も同じシートに書き込みます）。
+ *   料理シート：ID（自動で入る・触らない）／区分／料理名／これ1品／材料（「、」区切り）
+ *   材料シート：材料／売り場／常備品
+ *   料理シートに、材料シートにない材料を書くと、次にアプリが読み込んだとき材料シートの末尾に「その他」で追加されます。
  */
 
 const DATA = 'data', LOG = 'log', DEV = 'devices';
@@ -20,6 +25,12 @@ const DOCS = ['dishes', 'templates', 'plan', 'checks'];
 const EMPTY = { dishes: null, templates: { weeks: [] }, plan: { days: {} }, checks: { lists: {} } };
 const INVITE_MIN = 10;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 読み違えやすい I, L, O, 0, 1 は使わない
+const DISH = '料理', ING = '材料';
+const CAT_JP = { main: 'メイン', sub: 'サブ', rice: 'ごはん', soup: '汁物', other: 'その他' };
+const JP_CAT = { 'メイン': 'main', 'サブ': 'sub', 'ごはん': 'rice', '汁物': 'soup', 'その他': 'other' };
+const SECS = ['肉・魚', '野菜', '豆腐・卵・乳', '乾物・調味料', 'その他'];
+const SHEET_NOTE = '料理・材料シートで管理';
+let dishesDirty = false;
 
 /** 最初に1回だけ手で実行：シートを用意する（データがあれば触らない） */
 function setup() {
@@ -28,7 +39,9 @@ function setup() {
     sh.getRange(2, 1, DOCS.length, 3).setValues(DOCS.map(d => [d, JSON.stringify(EMPTY[d]), ''])));
   ensureSheet_(ss, LOG, ['日時', '端末', '操作']);
   ensureSheet_(ss, DEV, ['端末ID', '名前', '鍵(ハッシュ)', '状態', '登録日時', '招待した端末', '最終利用']);
-  alert_('シートの準備ができました。\n次に、デプロイ（ウェブアプリ）をしてから createInvite を実行してください。');
+  const moved = ensureDishSheets_(ss);
+  alert_('シートの準備ができました。' + (moved ? '\nこれまでの料理リスト（' + moved + '品）を「料理」「材料」シートに移しました。' : '') +
+    '\n\nコードを書き換えたときは「デプロイを管理」→ 鉛筆 →「新バージョン」で更新してください。');
 }
 
 /** 招待QRを作る（エディタから実行。スプレッドシートを開いておくと、そこにQRが出ます） */
@@ -162,9 +175,9 @@ function apply_(st, o) {
     case 'days': Object.keys(o.m || {}).forEach(k => { if (o.m[k]) days[k] = o.m[k]; else delete days[k]; }); break;
     case 'chk': { const l = lists[o.l] || (lists[o.l] = {}); if (o.v) l[o.n] = true; else delete l[o.n]; break; }
     case 'chkclr': delete lists[o.l]; break;
-    case 'dishes': if (o.v && Array.isArray(o.v.items)) st.dishes = o.v; break;
+    case 'dishes': if (o.v && Array.isArray(o.v.items)) { st.dishes = o.v; dishesDirty = true; } break;
     case 'init':
-      if (!st.dishes || !st.dishes.items || !st.dishes.items.length) st.dishes = o.dishes;
+      if (!st.dishes || !st.dishes.items || !st.dishes.items.length) { st.dishes = o.dishes; dishesDirty = true; }
       if (!st.templates.weeks || !st.templates.weeks.length) st.templates = o.templates;
       break;
   }
@@ -187,12 +200,104 @@ function read_() {
   if (!st.plan || !st.plan.days) st.plan = { days: {} };
   if (!st.checks || !st.checks.lists) st.checks = { lists: {} };
   if (!st.templates || !st.templates.weeks) st.templates = { weeks: [] };
+  const sd = readDishes_();
+  if (sd) st.dishes = sd;
   return st;
 }
 
 function write_(st) {
+  const sheets = !!SpreadsheetApp.getActive().getSheetByName(DISH);
+  if (sheets && dishesDirty && st.dishes) writeDishes_(st.dishes);
   SpreadsheetApp.getActive().getSheetByName(DATA)
-    .getRange(2, 1, DOCS.length, 3).setValues(DOCS.map(d => [d, JSON.stringify(st[d]), now_()]));
+    .getRange(2, 1, DOCS.length, 3).setValues(DOCS.map(d => [d, d === 'dishes' && sheets ? SHEET_NOTE : JSON.stringify(st[d]), now_()]));
+}
+
+/* ---------- 料理・材料シート ---------- */
+
+/** 料理・材料シートを作る。前の版のデータ（JSON）があれば移す。移した品数を返す */
+function ensureDishSheets_(ss) {
+  if (ss.getSheetByName(DISH)) return 0;
+  const ds = ss.insertSheet(DISH);
+  ds.getRange(1, 1, 1, 5).setValues([['ID', '区分', '料理名', 'これ1品', '材料（「、」区切り）']]).setFontWeight('bold');
+  ds.getRange('A1').setNote('IDは自動で入ります。消したり書き換えたりしないでください（献立とのつながりに使います）。');
+  ds.setFrozenRows(1);
+  ds.getRange('A:A').setFontColor('#999999');
+  ds.setColumnWidth(1, 70); ds.setColumnWidth(3, 160); ds.setColumnWidth(5, 420);
+  ds.getRange(2, 2, 999, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(Object.keys(JP_CAT), true).build());
+  ds.getRange(2, 4, 999, 1).insertCheckboxes();
+  const is = ss.getSheetByName(ING) || ss.insertSheet(ING);
+  is.getRange(1, 1, 1, 3).setValues([['材料', '売り場', '常備品']]).setFontWeight('bold');
+  is.setFrozenRows(1);
+  is.setColumnWidth(1, 180); is.setColumnWidth(2, 130);
+  is.getRange(2, 2, 999, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(SECS, true).build());
+  is.getRange(2, 3, 999, 1).insertCheckboxes();
+  let old = null;
+  const data = ss.getSheetByName(DATA);
+  if (data) data.getRange(2, 1, DOCS.length, 2).getValues().forEach(([n, j]) => { if (n === 'dishes') { try { old = JSON.parse(j); } catch (e) {} } });
+  if (old && Array.isArray(old.items) && old.items.length) { writeDishes_(old); return old.items.length; }
+  return 0;
+}
+
+function splitIng_(s) {
+  const seen = {};
+  return String(s || '').split(/[、,，・\n]+/).map(x => x.trim()).filter(x => x && !seen[x] && (seen[x] = true));
+}
+
+/** シートから料理リストを組み立てる（シートがなければ null） */
+function readDishes_() {
+  const ss = SpreadsheetApp.getActive();
+  const ds = ss.getSheetByName(DISH), is = ss.getSheetByName(ING);
+  if (!ds || !is) return null;
+  const ingr = {}, staples = [];
+  if (is.getLastRow() > 1) is.getRange(2, 1, is.getLastRow() - 1, 3).getValues().forEach(([n, sec, st]) => {
+    n = String(n).trim(); if (!n) return;
+    ingr[n] = SECS.indexOf(sec) >= 0 ? sec : 'その他';
+    if (st === true) staples.push(n);
+  });
+  const items = [], newIds = [], unknown = [];
+  if (ds.getLastRow() > 1) {
+    const rows = ds.getRange(2, 1, ds.getLastRow() - 1, 5).getValues();
+    rows.forEach((r, i) => {
+      const name = String(r[2]).trim();
+      if (!name) return;
+      let id = String(r[0]).trim();
+      if (!id) { id = 'd' + Date.now().toString(36) + i; newIds.push([i + 2, id]); }
+      const cat = JP_CAT[String(r[1]).trim()] || 'other';
+      const ing = splitIng_(r[4]);
+      ing.forEach(n => { if (!ingr[n] && unknown.indexOf(n) < 0) unknown.push(n); });
+      const it = { id: id, name: name, cat: cat, ing: ing };
+      if (cat === 'main' && r[3] === true) it.one = true;
+      items.push(it);
+    });
+  }
+  newIds.forEach(([row, id]) => ds.getRange(row, 1).setValue(id));       // 新しい行にIDを付ける
+  if (unknown.length) {                                                    // 材料シートにない材料を追加
+    is.getRange(is.getLastRow() + 1, 1, unknown.length, 3).setValues(unknown.map(n => [n, 'その他', false]));
+    unknown.forEach(n => { ingr[n] = 'その他'; });
+  }
+  return { items: items, ingr: ingr, staples: staples };
+}
+
+/** アプリで編集した料理リストをシートに書く */
+function writeDishes_(d) {
+  const ss = SpreadsheetApp.getActive();
+  const ds = ss.getSheetByName(DISH), is = ss.getSheetByName(ING);
+  const rows = d.items.map(x => [x.id, CAT_JP[x.cat] || 'その他', x.name, !!x.one, (x.ing || []).join('、')]);
+  if (ds.getLastRow() > 1) ds.getRange(2, 1, ds.getLastRow() - 1, 5).clearContent();
+  if (rows.length) ds.getRange(2, 1, rows.length, 5).setValues(rows);
+  ds.getRange(2, 4, Math.max(rows.length, 1) + 50, 1).insertCheckboxes();
+  const staples = d.staples || [], ingr = Object.assign({}, d.ingr || {});
+  staples.forEach(n => { if (!ingr[n]) ingr[n] = 'その他'; });
+  const cur = is.getLastRow() > 1 ? is.getRange(2, 1, is.getLastRow() - 1, 3).getValues().filter(r => String(r[0]).trim()) : [];
+  const seen = {};
+  const out = cur.map(r => {
+    const n = String(r[0]).trim(); seen[n] = true;
+    return [n, ingr[n] || r[1] || 'その他', staples.indexOf(n) >= 0];
+  });
+  Object.keys(ingr).forEach(n => { if (!seen[n]) out.push([n, ingr[n], staples.indexOf(n) >= 0]); });
+  if (is.getLastRow() > 1) is.getRange(2, 1, is.getLastRow() - 1, 3).clearContent();
+  if (out.length) is.getRange(2, 1, out.length, 3).setValues(out);
+  is.getRange(2, 3, out.length + 50, 1).insertCheckboxes();
 }
 
 /* ---------- 記録・小物 ---------- */

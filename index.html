@@ -145,6 +145,7 @@ textarea.t{min-height:90px}
 
   <section class="wrap" id="v-dish" hidden>
     <div class="bar"><h2>料理リスト</h2><button class="btn pri" id="addDish">＋ 料理を追加</button></div>
+    <p class="note" id="sheetNote" hidden>保存用スプレッドシートの「料理」「材料」シートでも編集できます。シートで直したあとは ↻ で読み込みます。</p>
     <div id="dishes"></div>
     <div class="sec" style="padding:12px 14px">
       <label class="f" for="staples">常備品（買い物リストの最後に在庫確認として出ます）</label>
@@ -168,7 +169,7 @@ textarea.t{min-height:90px}
 <script>
 {
 /* アプリのバージョン：ファイルを更新したら、ここを上げる */
-const VERSION="1.1.2";
+const VERSION="1.2.0";
 
 const CATS=[["main","メイン","主"],["sub","サブ","副"],["rice","ごはん","飯"],["soup","汁物","汁"],["other","その他","他"]];
 const SECS=["肉・魚","野菜","豆腐・卵・乳","乾物・調味料","その他"];
@@ -348,6 +349,7 @@ function copyText(){
 
 /* ---------- 料理リスト ---------- */
 function renderDishes(){
+  $("#sheetNote").hidden=!remote();
   $("#staples").value=(S.dishes?.staples||[]).join("、");
   if(!S.dishes){$("#dishes").innerHTML=`<div class="sec"><p class="empty">料理がまだありません。「＋ 料理を追加」から登録できます。</p></div>`;return}
   $("#dishes").innerHTML=CATS.map(([c,label,s])=>{const l=items().filter(x=>x.cat===c);
