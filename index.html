@@ -28,7 +28,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Zen Maru Got
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-header{background:var(--sun);color:var(--sunink);padding:18px max(4vw,16px) 20px}
+header{position:relative;background:var(--sun);color:var(--sunink);padding:22px max(4vw,16px) 20px}
+#ver{position:absolute;top:5px;right:max(4vw,16px);font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}
 .hrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:1240px;margin:auto}
 h1{font-size:28px;line-height:1.1;margin:0;font-weight:700}
 #stat{font-size:13px;opacity:.8}
@@ -107,6 +108,7 @@ textarea.t{min-height:90px}
 </head>
 <body>
 <header>
+  <span id="ver"></span>
   <div class="hrow"><h1>わが家の献立</h1><span><span id="stat">読み込み中…</span> <button class="btn sm" id="sync" aria-label="最新にする">↻</button> <button class="btn sm" id="openCfg">設定</button></span></div>
   <div class="today" id="today"></div>
 </header>
@@ -163,6 +165,9 @@ textarea.t{min-height:90px}
 <script src="seed.js"></script>
 <script>
 {
+/* アプリのバージョン：ファイルを更新したら、ここを上げる */
+const VERSION="1.1.0";
+
 const CATS=[["main","メイン","主"],["sub","サブ","副"],["rice","ごはん","飯"],["soup","汁物","汁"],["other","その他","他"]];
 const SECS=["肉・魚","野菜","豆腐・卵・乳","乾物・調味料","その他"];
 const WD="日月火水木金土";
@@ -525,6 +530,7 @@ function renderInit(){
 }
 
 /* ---------- 起動 ---------- */
+$("#ver").textContent="v"+VERSION;
 const inv=(location.hash.match(/inv=([A-Za-z0-9-]{8,9})/)||[])[1];
 const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const standalone=navigator.standalone===true||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);
